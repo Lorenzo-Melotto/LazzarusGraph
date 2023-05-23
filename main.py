@@ -5,21 +5,25 @@ import numpy as np
 class GUI():
     root: Tk
     canvas: Canvas
-    err_lbl: Label
+    err_lbl: ttk.Label # TODO: report errors to the user
+    coord_lbl: ttk.Label
     w_width: int
     w_height: int
     c_width: float
     c_height: float
+    offsetx: float
+    offsety: float
     f_sv: StringVar
     unit_size: int = 50
 
-    def __init__(self, title: str="Title", width: int= 500, height: int=400):
+    def __init__(self, title: str="Title", width: int= 500, height: int=400, 
+                 resize_x: bool= True, resize_y: bool = True):
         self.root = Tk()
         self.root.title(title)
         self.w_width = width
         self.w_height = height
         self.root.geometry(f"{self.w_width}x{self.w_height}")
-        self.root.resizable(width=False, height=False)
+        self.root.resizable(width=resize_x, height=resize_y)
         self.setup_widgets()
         self.root.mainloop()
 
@@ -30,11 +34,14 @@ class GUI():
         self.root.rowconfigure(0, weight=1)
         
         # configuring canvas
-        self.c_width = self.w_width-300
+        self.c_width = self.w_width-400
         self.c_height = self.w_height
         self.canvas = Canvas(mainframe, width=self.c_width, 
                              height=self.c_height, background="#FFF")
         self.canvas.grid(column=0, row=0, sticky=N+S+E+W)
+
+        self.offsetx: float = self.c_width/2
+        self.offsety: float = self.c_height/2
 
         self.draw_canvas_axis_and_grid()
 
@@ -45,9 +52,19 @@ class GUI():
         f_sv_entry.grid(column=2, row=0)
         f_sv_entry.focus()
 
+        self.coord_lbl = ttk.Label(mainframe, text="(0,0)")
+        self.coord_lbl.grid(column=4, row=0)
+
         ttk.Button(mainframe, text="Grafico", 
                    command=self.graphf).grid(column=3, row=0)
         self.root.bind("<Return>", self.graphf)
+        self.canvas.bind("<Motion>", self.get_mouse_coord)
+
+    def get_mouse_coord(self, event):
+        mouse_x, mouse_y = event.x, event.y
+        x = (mouse_x-self.offsetx)/self.unit_size
+        y = -(mouse_y-self.offsety)/self.unit_size
+        self.coord_lbl.configure(text=f"({x}, {y})")
 
     def graphf(self, *args) -> None:
         self.canvas.delete("all")
@@ -61,10 +78,6 @@ class GUI():
         f = self.clean_operators(f)
         # used to calculate the next point of the function
         f2 = f.replace("x", "x1") 
-
-        # centering where the function will be drawn
-        offsetx: float = self.c_width/2
-        offsety: float = self.c_height/2
 
         step: float=0.008
         assert step <= 0.01, f"Step must be <= 0.01, \
@@ -86,16 +99,17 @@ class GUI():
             x_dist: float = (x1 - x )**2
             y_dist: float = (y0 - y1)**2
             dist: float = math.sqrt(x_dist + y_dist)
-            if abs(dist) > self.c_height: continue
+            if abs(dist) >= self.c_height/3: continue
 
-            self.canvas.create_line(x*self.unit_size+offsetx, 
-                                    y0*self.unit_size+offsety, 
-                                    x1*self.unit_size+offsetx, 
-                                    y1*self.unit_size+offsety, 
+            self.canvas.create_line(x*self.unit_size+self.offsetx, 
+                                    y0*self.unit_size+self.offsety, 
+                                    x1*self.unit_size+self.offsetx, 
+                                    y1*self.unit_size+self.offsety, 
                                     fill="#0000FF")
     
     def draw_canvas_axis_and_grid(self) -> None:
         # drawing grid
+        # TODO: replace np.arange with a while loop
         for x in np.arange(-self.c_width, self.c_width, self.unit_size):
             self.canvas.create_line(x, 0, x, self.c_height, fill="#EEE")
 
@@ -128,7 +142,7 @@ class GUI():
         # drawing numbers on the x axis
         x = 0
         num = (-self.c_width/2)
-        while x <= self.c_width:
+        while x < self.c_width:
             x += self.unit_size
             num += self.unit_size
             if num < 0 or num > 0:
@@ -137,6 +151,7 @@ class GUI():
                                         text=f"{int(num/self.unit_size)}", 
                                         fill="#777")
             else:
+                # draw the 0 slightly offset to the left
                 self.canvas.create_text(x-10, 
                                         (self.c_height/2)+10, 
                                         text=f"{int(num/self.unit_size)}", 
@@ -145,7 +160,7 @@ class GUI():
         # drawing numbers on the y axis
         y = 0
         num = (-self.c_height/2)
-        while y <= self.c_height:
+        while y < self.c_height:
             y += self.unit_size
             num += self.unit_size
             if num < 0 or num > 0:
@@ -158,11 +173,13 @@ class GUI():
                                 0, 
                                 self.c_width/2,
                                 self.c_height,
+                                arrow="first",
                                 fill="gray")
         self.canvas.create_line(0, 
                                 self.c_height/2, 
                                 self.c_width, 
                                 self.c_height/2, 
+                                arrow="last",
                                 fill="gray")
     
     def clean_operators(self, f: str) -> str:
@@ -199,10 +216,12 @@ class GUI():
                     closed -= 1
             arg = f[idx_s:idx_e+1]
             f = f.replace(f"{arg}!", 'math.gamma(' + arg + "+1)")
+        # TODO: handle sin^n, cos^n
         return f
 
 def main() -> None:
-    GUI(title="LazzarusGraph", width=1000, height=500)
+    GUI(title="LazzarusGraph", width=1500, height=800, 
+        resize_x=False, resize_y=False)
 
 if __name__ == "__main__":
     main()

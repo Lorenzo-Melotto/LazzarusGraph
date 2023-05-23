@@ -1,0 +1,1 @@
+pyinstaller --onefile --paths .\env\Lib\site-packages .\main.py -n LazzarusGraph -w
