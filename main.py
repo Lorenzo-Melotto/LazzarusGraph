@@ -130,9 +130,8 @@ class LazzarusGraphGUI():
                 return
             except ValueError as e: # catching operations out of the domain
                 continue
-            except TypeError as e: 
-                msgbox.showerror(message=str(e), title="Error")
-                return
+            except TypeError: 
+                continue
             except SyntaxError as e: 
                 msgbox.showerror(message=str(e), title="Error")
                 return
@@ -147,33 +146,47 @@ class LazzarusGraphGUI():
                                     fill="#0000FF")
     
     def draw_canvas_axis_and_grid(self) -> None:
-        # drawing grid
-        assert (self.c_width/2) % self.unit_size == 0, \
-            msgbox.showerror(
-                message=("The size of each unit must be divisible by "
-                         "(width of canvas)/2"),
-                title="size_unit error")
-        
-        assert (self.c_height/2) % self.unit_size == 0, \
-            msgbox.showerror(
-                message=("The size of each unit must be divisible by "
-                         "(height of canvas)/2"),
-                title="size_unit error")
+        horz_rem: float = (self.c_width/2) / self.unit_size
+        vert_rem: float = (self.c_height/2) / self.unit_size
+        horz_offset = (horz_rem-math.floor(horz_rem))
+        vert_offset = (vert_rem-math.floor(vert_rem))
 
-        x: float = -self.c_width - self.unit_size
+        x: float = self.c_width/2
+        while x > 0:
+            x -= self.unit_size
+            self.canvas.create_line(x, 0, x, self.c_height, fill="#EEE")
+        x = self.c_width/2
         while x < self.c_width:
             x += self.unit_size
             self.canvas.create_line(x, 0, x, self.c_height, fill="#EEE")
 
-        y: float = -self.c_height - self.unit_size
+        y: float = self.c_height/2
+        while y > 0:
+            y -= self.unit_size
+            self.canvas.create_line(0, y, self.c_width, y, fill="#EEE")
+        y = self.c_height/2
         while y < self.c_height:
             y += self.unit_size
             self.canvas.create_line(0, y, self.c_width, y, fill="#EEE")
         
         # draw subgrid
-        counter: int = 0
+        counter: int = 1
         substep: int = 2
-        x: float = -self.c_width - (self.unit_size/substep)
+        x: float = self.c_width/2
+        while x > 0:
+            x -= (self.unit_size/substep)
+            print(x)
+            if counter % 2:
+                print(f"Drawing line at: {x}")
+                self.canvas.create_line(x, 
+                                        0, 
+                                        x, 
+                                        self.c_height, 
+                                        fill="#EEE", 
+                                        dash=1,)
+            counter += 1
+        counter = 1
+        x = self.c_width/2
         while x < self.c_width:
             x += (self.unit_size/substep)
             if counter % 2:
@@ -185,8 +198,20 @@ class LazzarusGraphGUI():
                                         dash=1)
             counter += 1
 
-        counter = 0
-        y: float = -self.c_height - (self.unit_size/substep)
+        counter = 1
+        y: float = self.c_height/2
+        while y > 0:
+            y -= (self.unit_size/substep)
+            if counter % 2:
+                self.canvas.create_line(0, 
+                                        y, 
+                                        self.c_width, 
+                                        y, 
+                                        fill="#EEE", 
+                                        dash=1)
+            counter += 1
+        counter = 1
+        y = self.c_height/2
         while y < self.c_height:
             y += (self.unit_size/substep)
             if counter % 2:
@@ -199,51 +224,41 @@ class LazzarusGraphGUI():
             counter += 1
 
         # drawing numbers on the x axis
-        x = 0
-        num = (-self.c_width/2)
-        while x < self.c_width:
+        x = horz_offset*self.unit_size - self.unit_size if horz_offset != 0 else 0
+        num = (-self.c_width/2) - horz_offset*self.unit_size
+        num = int(num/self.unit_size)
+        print(num)
+        while x < self.c_width - self.unit_size:
             x += self.unit_size
-            num += self.unit_size
+            num += 1
             if num < 0 or num > 0:
                 self.canvas.create_text(x, 
-                                        (self.c_height/2)+10, 
-                                        text=f"{int(num/self.unit_size)}", 
+                                        (self.c_height/2)+10,                       
+                                        text=f"{num}",
                                         fill="#777")
             else:
                 # draw the 0 slightly offset to the left
                 self.canvas.create_text(x-10, 
                                         (self.c_height/2)+10, 
-                                        text=f"{int(num/self.unit_size)}", 
+                                        text=f"{num}",
                                         fill="#777")
             
         # drawing numbers on the y axis
-        y = 0
-        num = (-self.c_height/2)
-        while y < self.c_height:
+        y = vert_offset*self.unit_size - self.unit_size if vert_offset != 0 else 0
+        num = (-self.c_height/2) - vert_offset*self.unit_size
+        num = int(num/self.unit_size)
+        while y < self.c_height - self.unit_size:
             y += self.unit_size
-            num += self.unit_size
+            num += 1
             if num < 0 or num > 0:
                 self.canvas.create_text((self.c_width/2)-10,
                                          y, 
-                                         text=f"{int(-num/self.unit_size)}", 
+                                         text=f"{-num}", 
                                          fill="#777")    
 
         half_w: float = self.c_width/2
         half_h: float = self.c_height/2
-        self.canvas.create_line(half_w,
-                                0, 
-                                half_w,
-                                self.c_height,
-                                arrow="first",
-                                fill="gray")
-        self.canvas.create_line(0, 
-                                half_h, 
-                                self.c_width, 
-                                half_h, 
-                                arrow="last",
-                                fill="gray")
-
-        # drawing 
+        # drawing cursor lines
         self.canvas.create_line(half_w,
                                 0, 
                                 half_w,
@@ -256,6 +271,20 @@ class LazzarusGraphGUI():
                                 half_h,  
                                 fill="#AAA",
                                 tags="h_line")
+        
+        # drawing main axis
+        self.canvas.create_line(half_w,
+                                0, 
+                                half_w,
+                                self.c_height,
+                                arrow="first",
+                                fill="gray")
+        self.canvas.create_line(0, 
+                                half_h, 
+                                self.c_width, 
+                                half_h, 
+                                arrow="last",
+                                fill="gray")
     
     def clean_operators(self, f: str) -> str:
         f = f.replace("^", "**")
