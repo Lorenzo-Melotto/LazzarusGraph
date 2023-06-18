@@ -62,9 +62,29 @@ class LazzarusGraphGUI():
         ttk.Button(mainframe, text="Grafico", 
                    command=self.graphf).grid(column=3, row=0)
         self.root.bind("<Return>", self.graphf)
+        self.root.bind("<Configure>", self.resize)
         self.canvas.bind("<Motion>", self.get_mouse_coord)
 
         if self.initial_function != "": self.graphf()
+
+    def resize(self, event) -> None:
+        """Handles resize event"""
+        if event.widget == self.root:
+            if self.w_width != event.width or self.c_height != event.height:
+                # window size
+                self.w_width = event.width
+                self.w_height = event.height
+                # canvas size
+                self.c_width = self.w_width - 400
+                self.c_height = self.w_height
+                # offsets
+                self.offsetx = self.c_width/2
+                self.offsety = self.c_height/2
+                # canvas redrawing
+                self.canvas.delete("all")
+                self.canvas.configure(width=self.c_width, height=self.c_height)
+                self.draw_canvas_axis_and_grid()
+                if self.f_sv.get() != "":  self.graphf()
 
     def get_mouse_coord(self, event) -> None:
         """ Sets the coord_lbl text to the current mouse x and y position
@@ -175,9 +195,7 @@ class LazzarusGraphGUI():
         x: float = self.c_width/2
         while x > 0:
             x -= (self.unit_size/substep)
-            print(x)
             if counter % 2:
-                print(f"Drawing line at: {x}")
                 self.canvas.create_line(x, 
                                         0, 
                                         x, 
@@ -224,13 +242,10 @@ class LazzarusGraphGUI():
             counter += 1
 
         # drawing numbers on the x axis
-        x = horz_offset*self.unit_size - self.unit_size if horz_offset != 0 else 0
-        num = (-self.c_width/2) - horz_offset*self.unit_size
-        num = int(num/self.unit_size)
-        print(num)
-        while x < self.c_width - self.unit_size:
-            x += self.unit_size
-            num += 1
+        # negative numbers
+        x = self.c_width/2
+        num = 0
+        while x > 0:
             if num < 0 or num > 0:
                 self.canvas.create_text(x, 
                                         (self.c_height/2)+10,                       
@@ -242,19 +257,40 @@ class LazzarusGraphGUI():
                                         (self.c_height/2)+10, 
                                         text=f"{num}",
                                         fill="#777")
+            num -= 1
+            x -= self.unit_size
+        # positive numbers
+        x = self.c_width/2 + self.unit_size
+        num = 1
+        while x < self.c_width:
+            self.canvas.create_text(x, 
+                                    (self.c_height/2)+10,                       
+                                    text=f"{num}",
+                                    fill="#777")
+            num += 1
+            x += self.unit_size
             
         # drawing numbers on the y axis
-        y = vert_offset*self.unit_size - self.unit_size if vert_offset != 0 else 0
-        num = (-self.c_height/2) - vert_offset*self.unit_size
-        num = int(num/self.unit_size)
-        while y < self.c_height - self.unit_size:
+        # negative numbers
+        y = self.c_height/2 - self.unit_size
+        num = -1
+        while y > 0:
+            self.canvas.create_text((self.c_width/2)-10,
+                                    y, 
+                                    text=f"{-num}", 
+                                    fill="#777")
+            y -= self.unit_size
+            num -= 1
+        # positive numbers
+        y = self.c_height/2 + self.unit_size
+        num = 1
+        while y < self.c_height:
+            self.canvas.create_text((self.c_width/2)-10,
+                                    y, 
+                                    text=f"{-num}", 
+                                    fill="#777")
             y += self.unit_size
             num += 1
-            if num < 0 or num > 0:
-                self.canvas.create_text((self.c_width/2)-10,
-                                         y, 
-                                         text=f"{-num}", 
-                                         fill="#777")    
 
         half_w: float = self.c_width/2
         half_h: float = self.c_height/2
@@ -355,7 +391,7 @@ def main() -> None:
     window_w: int = 1200
     window_h: int = window_w - 400
     LazzarusGraphGUI(title="LazzarusGraph", width=window_w, height=window_h, 
-        resize_x=False, resize_y=False, initial_function=initial_function)
+        resize_x=True, resize_y=True, initial_function=initial_function)
 
 if __name__ == "__main__":
     main()
